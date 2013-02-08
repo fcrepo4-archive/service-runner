@@ -4,6 +4,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -31,41 +33,15 @@ public class FedoraServiceRunner implements Runnable {
     public void run() {
         final Map<String, Integer> serviceStates = new ConcurrentHashMap<String, Integer>();
         for (final FedoraService s : services) {
-            serviceStates.put(s.getClass().getName(), SERVICE_STATE_STARTING);
-            Runnable r = new Runnable() {
-                public void run() {
-                    s.startService();
-                    serviceStates.put(s.getClass().getName(), SERVICE_STATE_RUNNING);
-                }
-            };
-            Thread t = new Thread(r);
-            t.start();
-            LOG.info("Waiting for services....");
-            boolean servicesStarting = true;
-            while (servicesStarting) {
-                servicesStarting = false;
-                for (Entry<String, Integer> e : serviceStates.entrySet()) {
-                    if (e.getValue() == SERVICE_STATE_STARTING) {
-                        servicesStarting = true;
-                    }
+            Executors.newFixedThreadPool(1).submit(s);
+            LOG.info("waiting for service " + s.getClass().getName());
+            while (!s.isRunning()) {
+                try {
+                    Thread.sleep(100);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
                 }
             }
-        }
-        for (Entry<String, Integer> e : serviceStates.entrySet()) {
-            if (e.getValue() == SERRVICE_STATE_ERROR) {
-                LOG.error("Service '" + e.getKey() + "' did not start sucessfully. Fix this and restart the service runner");
-                shutdown = true;
-            }
-        }
-        while (!shutdown) {
-            try {
-                Thread.sleep(1000);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
-        }
-        for (FedoraService s : services) {
-            s.stopService();
         }
     }
 

@@ -1,6 +1,8 @@
 package org.fcrepo.service;
 
-public interface FedoraService {
-    public void startService();
+import java.util.concurrent.Callable;
+
+public interface FedoraService extends Callable<Object>{
     public void stopService();
+    public boolean isRunning();
 }
